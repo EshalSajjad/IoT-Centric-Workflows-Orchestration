@@ -1,0 +1,8 @@
+# Stand-in config file for the plume-modeling deployment step.
+# The original data_integration_service.jar / config.txt from the
+# base Orchflow research team was never included in the shared
+# GitHub repo (only referenced by hardcoded absolute paths on
+# their own machine). This is a placeholder so the SFTP deployment
+# step has something real to transfer, not a reconstruction of
+# their actual plume-modeling logic.
+mode=stub
