@@ -46,11 +46,15 @@ Deploy from the following JARs depending on the scenario to be executed on the r
 
 2. peer-node-gom.jar
 
-	sudo java -jar peer-node-gom.jar "tcp://[IP of the PC running workflow-coordinator]:1883" "tcp://[IP of the current device]:1883" "tcp://[IP of the other peer-node device]:1883" "tcp://[IP of the end-device]:1883" "tcp://[IP of the other end-device]:1883" "45"
+	sudo java -jar peer-node-gom.jar "tcp://[IP of the PC running workflow-coordinator]:1883" "tcp://[IP of the current device]:1883" "tcp://[IP of the other peer-node device]:1883" "tcp://[IP of the end-device]:1883" "tcp://[IP of the other end-device]:1883" "45" "GOM"
+
+	Note: the 7th argument (GOM/LOM) must match the `approach` value set in `config.properties`. Omitting it causes an `ArrayIndexOutOfBoundsException` at startup.
 
 3. peer-node-lom.jar
 
-	sudo java -jar peer-node-lom.jar "tcp://[IP of the PC running workflow-coordinator]:1883" "tcp://[IP of the current device]:1883" "tcp://[IP of the other peer-node device]:1883" "tcp://[IP of the end-device]:1883" "tcp://[IP of the other end-device]:1883" "45"
+	sudo java -jar peer-node-lom.jar "tcp://[IP of the PC running workflow-coordinator]:1883" "tcp://[IP of the current device]:1883" "tcp://[IP of the other peer-node device]:1883" "tcp://[IP of the end-device]:1883" "tcp://[IP of the other end-device]:1883" "45" "LOM"
+
+	Note: the 7th argument (GOM/LOM) must match the `approach` value set in `config.properties`. Omitting it causes an `ArrayIndexOutOfBoundsException` at startup.
 
 4. end-device.jar
 
