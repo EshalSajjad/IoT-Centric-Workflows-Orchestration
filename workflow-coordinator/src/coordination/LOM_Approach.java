@@ -39,7 +39,7 @@ public class LOM_Approach
 	private Connection connect = null;
 	final private String host = "localhost:3306";
 	final private String user = "root";
-	final private String passwd = "root";
+	final private String passwd = "";
 	HashMap<String, String> Sensors = new HashMap<String, String>();
 	HashMap<String, String> Fog_Services = new HashMap<String, String>();
 	HashMap<String, String> Cloud_Services = new HashMap<String, String>();
