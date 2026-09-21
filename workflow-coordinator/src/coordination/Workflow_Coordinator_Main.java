@@ -539,13 +539,13 @@ public class Workflow_Coordinator_Main {
 			try
 			{
 				String fileName = Helper.getFileNameFromFullPath(src);
-				
+
 				JSch jsch = new JSch();
+				jsch.addIdentity(pswd);
 				Session session = jsch.getSession(user, host_address);
 				java.util.Properties config = new java.util.Properties();
 				config.put("StrictHostKeyChecking", "no");
 				session.setConfig(config);
-				session.setPassword(pswd);
 				session.connect();
 
 				ChannelSftp sftpChannel = (ChannelSftp) session.openChannel("sftp");
