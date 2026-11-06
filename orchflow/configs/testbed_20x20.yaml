@@ -1,0 +1,10 @@
+# Paper testbed shape: 20 peer nodes x 20 devices (the legacy DB only had 10 x 20).
+name: testbed_20x20
+n_peers: 20
+devices_per_peer: 20
+area_center: {lat: 30.456048, lon: -91.205240}
+cell_radius_m: 100
+services_per_device: [wind_speed, wind_direction, temperature, humidity,
+                      aerosol_concentration, plume_service, camera_feed_intersection_1,
+                      traffic_flow_service]
+registry_seed: 0

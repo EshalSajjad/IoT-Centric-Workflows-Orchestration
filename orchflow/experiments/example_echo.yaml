@@ -1,0 +1,15 @@
+# Reference example of the ExperimentSpec format. Uses the dummy "echo" protocol, so the
+# runtimes (Tracks 2 and 3) can be tested before GOM/LOM exist.
+name: example-echo
+workflow: ../workflows/example_tiny.yaml
+testbed: ../configs/testbed_20x20.yaml
+runtime: sim                      # sim | live
+orchestration: {name: echo, params: {period_s: 10}}   # later: {name: gom} / {name: lom}
+binding: {name: first}            # later: {name: nearest}
+mobility: {name: exponential, params: {mean_residence_s: 300}}
+network: {name: ideal}
+work: {name: fixed}
+duration_s: 3600
+seeds: 3                          # shorthand for [0, 1, 2]
+calibration: {delay_offset_s: 0.0}
+output_dir: ../results
