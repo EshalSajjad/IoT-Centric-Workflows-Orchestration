@@ -1,0 +1,41 @@
+# Start the whole live system on one laptop:
+#     cd orchflow/deploy/local
+#     docker compose up --build
+# broker      Mosquitto, the MQTT "post office" (port 1883 is also opened on your laptop)
+# coordinator the "coord" node; it is the leader that says start / stop
+# peers       peer-01 and peer-02 in one container
+# devices     dev-0001 ... dev-0006 in one container
+# Event logs land in orchflow/results/live-echo/ (one file per container).
+# When the run is over: Ctrl+C, then `docker compose down`.
+name: orchflow
+
+x-agent: &agent
+  build: {context: ../.., dockerfile: deploy/local/Dockerfile}
+  image: orchflow:local
+  volumes: ["../../results:/results"]
+  depends_on: {broker: {condition: service_healthy}}
+
+services:
+  broker:
+    image: eclipse-mosquitto:2
+    command: mosquitto -c /mosquitto-no-auth.conf
+    ports: ["1883:1883"]
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-W", "3"]
+      interval: 2s
+      retries: 15
+
+  coordinator:
+    <<: *agent
+    command: [agent, deploy/local/experiment_echo.yaml, --nodes, coord, --name, coord,
+              --broker, "broker:1883", --run-dir, /results/live-echo]
+
+  peers:
+    <<: *agent
+    command: [agent, deploy/local/experiment_echo.yaml, --nodes, peers, --name, peers,
+              --broker, "broker:1883", --run-dir, /results/live-echo]
+
+  devices:
+    <<: *agent
+    command: [agent, deploy/local/experiment_echo.yaml, --nodes, devices, --name, devices,
+              --broker, "broker:1883", --run-dir, /results/live-echo]

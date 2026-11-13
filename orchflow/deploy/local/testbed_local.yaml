@@ -1,0 +1,7 @@
+# Small testbed for running on one laptop: 2 peer nodes x 3 devices each.
+name: testbed_local
+n_peers: 2
+devices_per_peer: 3
+area_center: {lat: 30.456048, lon: -91.205240}
+cell_radius_m: 100
+registry_seed: 0

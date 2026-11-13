@@ -1,0 +1,12 @@
+# Live smoke test: the dummy "echo" protocol on the small local testbed.
+# Every 5 s: coordinator -> each peer (task_assign) -> one device (data_request)
+#            -> peer (data_reply) -> coordinator (task_result). 4 messages per peer per tick.
+name: live-echo
+workflow: ../../workflows/example_tiny.yaml
+testbed: testbed_local.yaml
+runtime: live
+orchestration: {name: echo, params: {period_s: 5}}
+binding: {name: first}
+duration_s: 30
+seeds: [0]
+output_dir: ../../results
