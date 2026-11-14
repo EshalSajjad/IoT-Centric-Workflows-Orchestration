@@ -5,6 +5,7 @@ devices_per_peer: 20
 area_center: {lat: 30.456048, lon: -91.205240}
 cell_radius_m: 100
 services_per_device: [wind_speed, wind_direction, temperature, humidity,
-                      aerosol_concentration, plume_service, camera_feed_intersection_1,
+                      aerosol_concentration, computation_service_plume, plume_service,
+                      camera_feed_intersection_1,
                       traffic_flow_service]
 registry_seed: 0

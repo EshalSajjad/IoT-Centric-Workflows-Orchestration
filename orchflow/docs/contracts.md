@@ -56,7 +56,12 @@ The **only** way nodes talk. A `Message` has a `kind` (e.g. `task_assign`,
 
 > **Counting rule:** every message that is part of a redeployment carries that
 > redeployment's `rebind_id`. Table I's message column = messages with a `rebind_id`.
-> This is how we get 8 / 12 / 8 / 6 exactly instead of counting stdout by hand.
+> This is how we *measure* messages per redeployment instead of counting stdout by hand.
+>
+> **We port, we don't fit.** GOM/LOM send exactly the messages the legacy code sends
+> during a rebind, one `ctx.send` per legacy MQTT publish. We do **not** add or remove
+> messages to hit the paper's 8 / 12 / 8 / 6. The paper's figures are a comparison we
+> report; any difference goes in `docs/deviations.md` with the reason.
 
 ### 4. Event log (`core/events.py`)
 Everything that happens is written as one line of JSON in `events.jsonl`: run start/end,
@@ -98,7 +103,19 @@ This is how future students add ideas without touching core code.
 
 | Track | Folder(s) | Builds against |
 |---|---|---|
-| 1. Logic | `policies/`, `services/`, `core/registry.py`, `workflows/imw.yaml` | `NodeLogic`, `BindingPolicy`, `Registry`; tests with `RecordingContext` |
+| 1. Logic | `policies/`, `services/`, `importers/`, `core/registry.py`, `workflows/`, `docs/protocol.md`, `docs/deviations.md` | `NodeLogic`, `BindingPolicy`, `Registry`; tests with `RecordingContext` |
+
+**Track 1 is done when:** the rebind message sequences of GOM and LOM are traced from the
+legacy code into `docs/protocol.md` (each message cites its legacy file:line); the Python
+port sends exactly that sequence (tests assert it message by message); the departed device
+is never re-picked; the IMW workflow loads from YAML. The resulting count per rebind is
+compared with the paper's 8 / 12 / 8 / 6 and any gap is explained in `docs/deviations.md`.
+
+**Which legacy code to port from:** use the `.java` source, not the shipped jars.
+`workflow-coordinator.jar` and `peer-node-gom.jar` were rebuilt from source by us, so they
+match it. `peer-node-lom.jar` and `end-device.jar` are the authors' originals and contain
+different code (`com.hascode...Main_Rasp_Local`, `Mobility_IoT`); look inside them only
+for behaviour that has no source at all (e.g. the device heartbeat / "I am alive").
 | 2. Simulation & results | `runtime/sim/`, `metrics/`, `experiments/` | `NodeContext`, `MobilityModel`, events; tests with `echo` + `sample_events()` |
 | 3. Live & tooling | `runtime/live/`, `deploy/local/`, `cli.py`, CI | `NodeContext`, messages; tests with `echo` |
 

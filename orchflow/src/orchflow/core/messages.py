@@ -54,6 +54,12 @@ class MsgKind(StrEnum):
     REBIND_REPLY = "rebind_reply"
     PEER_QUERY = "peer_query"  # LOM: ask a neighbouring peer for candidates
     PEER_REPLY = "peer_reply"
+    # peer -> coordinator: redeployment began
+    # (legacy "<hint>[k]</hint> Start" / "<Task>[k]</Task> Device left")
+    REDEPLOY_START = "redeploy_start"
+    # peer -> coordinator: redeployment finished
+    # (legacy "<hint>[k]</hint> End" / "Redeployment Done [k]")
+    REDEPLOY_DONE = "redeploy_done"
 
 
 class Message(BaseModel):

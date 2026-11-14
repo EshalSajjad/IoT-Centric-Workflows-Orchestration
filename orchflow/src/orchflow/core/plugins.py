@@ -30,10 +30,14 @@ PLUGIN_KINDS: tuple[PluginKind, ...] = ("orchestration", "binding", "mobility", 
 # own modules here (no contract PR needed for this list -- just add your line).
 _BUILTIN_MODULES: list[str] = [
     "orchflow.core.testing",  # "echo" orchestration + "first" binding (fakes)
-    # Track 1: "orchflow.policies.gom", "orchflow.policies.lom",
-    #          "orchflow.policies.binding_nearest", "orchflow.policies.binding_qos",
-    # Track 2: "orchflow.runtime.sim.mobility", "orchflow.runtime.sim.network",
-    #          "orchflow.runtime.sim.work",
+    "orchflow.policies.gom",  # Track 1
+    "orchflow.policies.lom",
+    "orchflow.policies.binding_nearest",
+    "orchflow.policies.binding_qos",
+    "orchflow.policies.mobility_legacy",
+    "orchflow.runtime.sim.mobility",  # Track 2 (also used by the live runtime)
+    "orchflow.runtime.sim.network",
+    "orchflow.runtime.sim.work",
 ]
 
 _REGISTRY: dict[str, dict[str, Callable[..., Any]]] = {}
