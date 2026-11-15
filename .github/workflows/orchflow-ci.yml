@@ -1,0 +1,26 @@
+# Orchflow CI. Lives at the repo root because GitHub only reads workflows from here
+# (it used to be orchflow/.github/, which GitHub never ran).
+name: orchflow-ci
+on:
+  push:
+    paths: ["orchflow/**", ".github/workflows/orchflow-ci.yml"]
+  pull_request:
+    paths: ["orchflow/**", ".github/workflows/orchflow-ci.yml"]
+defaults:
+  run:
+    working-directory: orchflow
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv python install 3.12
+      - run: uv sync --all-extras
+      - run: uv run ruff check src tests
+      - run: uv run pyright
+      # a real Mosquitto broker so the live runtime's MQTT test runs too
+      - run: docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf
+      - run: uv run pytest -q
+        env:
+          ORCHFLOW_TEST_BROKER: localhost:1883
