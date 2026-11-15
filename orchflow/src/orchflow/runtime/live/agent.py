@@ -67,7 +67,7 @@ def load_inputs(experiment_path: str | Path, *, duration_s: float | None = None,
     return exp, load_yaml(exp.workflow, WorkflowSpec), load_yaml(exp.testbed, TestbedSpec)
 
 
-def build_registry(testbed: TestbedSpec) -> Registry:
+def build_registry(testbed: TestbedSpec, workflow: WorkflowSpec | None = None) -> Registry:
     """Track 1's core/registry.build_registry once it exists; until then the tiny fake
     registry with the testbed's shape (n_peers x devices_per_peer)."""
     try:
@@ -80,7 +80,7 @@ def build_registry(testbed: TestbedSpec) -> Registry:
         log.warning("core/registry.py not written yet (Track 1): using tiny_registry(%d, %d)",
                     testbed.n_peers, testbed.devices_per_peer)
         return tiny_registry(testbed.n_peers, testbed.devices_per_peer)
-    return real(testbed)
+    return real(testbed, workflow)
 
 
 def all_nodes(registry: Registry) -> list[str]:

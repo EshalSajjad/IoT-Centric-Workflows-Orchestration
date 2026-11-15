@@ -173,8 +173,8 @@ falls within `duration_s` (3600 s) of the first instance's start**: 60 for plume
 counts). Measure from the first instance, not t = 0, because start-up deployment takes a few
 seconds.
 
-**Track 3 (CLI):** the importer is `orchflow.importers.legacy_xml.main(argv)`; wire
-`orchflow import-legacy` to it (same arguments as `python -m orchflow.importers.legacy_xml -h`).
+**Track 3 (CLI):** `orchflow import-legacy ...` runs `orchflow.importers.legacy_xml.main(argv)`
+(same arguments as `python -m orchflow.importers.legacy_xml -h`).
 
 **Binding keys:** bindings are named `"{task_id}/{slot}/{service}/{n}"` (`policies/common.py`,
 `bkey`). They appear in message payloads as `payload["key"]`.

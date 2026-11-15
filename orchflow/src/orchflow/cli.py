@@ -5,7 +5,7 @@
     orchflow agent EXPERIMENT.yaml --nodes coord      start ONE live process (used by Docker)
     orchflow merge-logs RUN_DIR                       events-*.jsonl -> events.jsonl
     orchflow table1 RESULTS_DIR                       Table I from event logs (Track 2's code)
-    orchflow import-legacy WORKFLOW.xml -o OUT.yaml   (Track 1 writes the importer)
+    orchflow import-legacy WORKFLOW.xml -o OUT.yaml   legacy XML -> workflow YAML (Track 1)
 
 Contracts with the other tracks (agree on these names on the group call):
     Track 2, sim runtime : orchflow.runtime.sim.run_seed(experiment, seed, run_dir) -> None
@@ -77,7 +77,7 @@ async def _live_agent(experiment: Path, nodes: str, broker: str, seed: int, run_
     from orchflow.runtime.live.transport import LocalBroker, MqttTransport, Transport
 
     exp, wf, testbed = load_inputs(experiment, duration_s=duration_s)
-    registry = build_registry(testbed)
+    registry = build_registry(testbed, wf)
     transport: Transport
     if broker == "memory":
         transport = LocalBroker().transport()
@@ -196,13 +196,18 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("results")
     t.set_defaults(fn=cmd_table1)
 
-    sub.add_parser("import-legacy", help="(Track 1) legacy XML -> workflow YAML").set_defaults(
-        fn=lambda _: (print("`orchflow import-legacy` is Track 1's, not written yet",
-                            file=sys.stderr), 2)[1])
+    # arguments are handed to Track 1's importer as-is (see `orchflow import-legacy -h`)
+    sub.add_parser("import-legacy", help="legacy workflow XML -> workflow YAML (Track 1)",
+                   add_help=False)
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if argv[:1] == ["import-legacy"]:
+        from orchflow.importers.legacy_xml import main as import_legacy
+
+        return import_legacy(argv[1:])
     args = build_parser().parse_args(argv)
     _setup_logging(getattr(args, "quiet", False))
     try:

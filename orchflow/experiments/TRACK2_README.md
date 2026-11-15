@@ -10,7 +10,7 @@ Install dependencies in the `orchflow/` project root (Python 3.11+):
 ```sh
 uv sync --all-extras
 uv run pytest -q
-uv run pytest -q src/orchflow/runtime/sim/test_sim.py src/orchflow/metrics/test_metrics.py
+uv run pytest -q tests/test_sim.py tests/test_metrics.py
 uv run python experiments/demo_echo_sim.py --seeds 3 --duration-s 60
 uv run python experiments/demo_echo_sim.py --seeds 100 --duration-s 3600
 ```
@@ -34,11 +34,9 @@ and GOM/LOM policies, and Track 3 must wire `orchflow run`/`orchflow table1`.
   and `DeviceLeft`. It delivers messages in memory, without wall-time sleeps.
 - Named timers replace earlier timers; cancel/departure invalidate stale callbacks.
   Work completion is ignored if the device departed or its generation changed.
-- Network/work/mobility plugins are registered when `orchflow.runtime.sim.env`
-  is imported. For the shared `orchflow plugins` command to enumerate them
-  without importing the simulator first, the group should agree on extending
-  `core/plugins.py`'s `_BUILTIN_MODULES`; do that through the shared-contract
-  review process rather than editing another track's code.
+- Network/work/mobility plugins are listed in `core/plugins.py`'s
+  `_BUILTIN_MODULES`, so `orchflow plugins` and the live runtime find them
+  without importing the simulator first.
 - Simulator assigns reproducible wire IDs (`sim-...`) to outbound messages
   because `Message.id` defaults to random UUIDs. Policies should correlate
   by received wire IDs, not retain pre-send draft IDs.

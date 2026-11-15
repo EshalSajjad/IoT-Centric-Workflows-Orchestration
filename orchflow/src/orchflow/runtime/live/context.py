@@ -26,6 +26,7 @@ from orchflow.core.interfaces import NodeLogic, Registry, WorkKind
 from orchflow.core.messages import Message
 from orchflow.core.models import Artifact, Service
 from orchflow.core.spec import ExperimentSpec, WorkflowSpec
+from orchflow.services import run_service
 
 if TYPE_CHECKING:
     from orchflow.runtime.live.agent import LiveAgent
@@ -120,5 +121,7 @@ class LiveContext:
             ok = await self._agent.work.run(kind, service, artifact, data)
         except Exception:
             ok = False
+        if ok and kind == "execute":  # Track 1's service stub gives the result's content
+            data = {**data, "output": run_service(service.name if service else None, self._rng)}
         if self.alive:
             self.call(self.logic.on_work_done, work_id, ok, data)
