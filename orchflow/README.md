@@ -5,8 +5,8 @@ protocols from *Demo: Orchflow* (ICDCS 2024), rebuilt in Python so the same logi
 fast reproducible **simulation** and in a **live** MQTT deployment, with every event logged
 so Table I can be regenerated with one command.
 
-> Status: skeleton. Only the shared contracts (`src/orchflow/core/`) exist so far.
-> Plan: `PLAN_v2.pdf`. Contracts explained: [`docs/contracts.md`](docs/contracts.md).
+> Setup, Table I reproduction and status: see the [repository README](../README.md).
+> Contracts explained: [`docs/contracts.md`](docs/contracts.md).
 
 ## Layout
 ```
@@ -16,8 +16,10 @@ src/orchflow/runtime/sim/   Track 2: SimPy runtime
 src/orchflow/metrics/       Track 2: event log -> Table I
 src/orchflow/runtime/live/  Track 3: MQTT runtime
 src/orchflow/cli.py         Track 3: `orchflow` command
-workflows/ configs/ experiments/   YAML inputs (examples included)
-deploy/local  deploy/oracle        Docker Compose / Oracle VM setup
+workflows/ configs/               YAML inputs: workflows and testbeds
+experiments/                       one YAML per run; plume/traffic x gom/lom = Table I
+deploy/local                       Docker Compose on one machine
+deploy/vm                          multi-VM setup (bootstrap.sh, orchflow_vm.py); Oracle too
 docs/                       contracts, protocol, deviations, decisions
 tests/                      contract tests (+ each track's tests)
 ```

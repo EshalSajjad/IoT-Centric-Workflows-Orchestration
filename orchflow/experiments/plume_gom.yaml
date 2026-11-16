@@ -1,0 +1,17 @@
+# Table I, plume activity, GOM. Run:  orchflow run experiments/plume_gom.yaml
+# The four files plume_gom / plume_lom / traffic_gom / traffic_lom differ only in the
+# workflow and the orchestration line. Paper setup: 20 peers x 20 devices, device
+# residence ~ Exp(mean 5 min), 60-minute run. See docs/deviations.md for what differs.
+name: plume-gom
+workflow: ../workflows/plume.yaml
+testbed: ../configs/testbed_20x20.yaml
+runtime: sim                      # the same file works for live agents (orchflow agent ...)
+orchestration: {name: gom}       # legacy timings by default; see docs/protocol.md section 3
+binding: {name: nearest}          # legacy Helper.findMinimal: closest device in the cell
+# Departed devices come back (mean 5 min), otherwise cells empty out within the hour.
+mobility: {name: exponential, params: {mean_residence_s: 300, mean_rejoin_s: 300}}
+network: {name: lan}              # sim only: 2 ms per message
+work: {name: fixed}               # sim only: execute = service time, deploy = size / rate
+duration_s: 3600
+seeds: 100
+output_dir: ../results
