@@ -1,0 +1,30 @@
+# GENERATED from the legacy workflow XML -- do not edit by hand.
+# python -m orchflow.importers.legacy_xml ../workflow-coordinator/incident-management-workflow-model.xml -o workflows/plume.yaml --task 1 --period 60 --deadline 58 --name 'Plume modelling (IMW task 1)'
+id: plume
+name: Plume modelling (IMW task 1)
+tasks:
+- id: '1'
+  name: wind_speed + wind_direction + temperature + humidity + aerosol_concentration + computation_service_plume
+    + plume_service
+  location:
+    lat: 30.456048
+    lon: -91.20524
+  requirements:
+  - service_name: wind_speed
+    kind: sensor
+  - service_name: wind_direction
+    kind: sensor
+  - service_name: temperature
+    kind: sensor
+  - service_name: humidity
+    kind: sensor
+  - service_name: aerosol_concentration
+    kind: sensor
+  - service_name: computation_service_plume
+    kind: fog
+  - service_name: plume_service
+    kind: fog
+    deployable: true
+    artifact: data_integration_service.jar
+  period_s: 60.0
+  deadline_s: 58.0

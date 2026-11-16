@@ -1,0 +1,19 @@
+# Reference example of the WorkflowSpec format (orchflow.core.spec.WorkflowSpec).
+# The real IMW workflow (workflows/imw.yaml) is produced by Track 1's legacy-XML importer.
+id: tiny
+name: tiny plume-like workflow
+tasks:
+  - id: "1"
+    name: read wind
+    location: {lat: 30.456048, lon: -91.205240}
+    period_s: 60          # a new instance every 60 s
+    deadline_s: 58        # each instance must finish within 58 s of starting
+    requirements:
+      - {service_name: wind_speed, kind: sensor}
+  - id: "2"
+    name: plume model
+    location: {lat: 30.456048, lon: -91.205240}
+    depends_on: ["1"]
+    requirements:
+      - {service_name: plume_service, kind: fog, deployable: true,
+         artifact: data_integration_service.jar}

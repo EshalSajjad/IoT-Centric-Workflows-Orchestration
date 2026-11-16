@@ -1,0 +1,20 @@
+# GENERATED from the legacy workflow XML -- do not edit by hand.
+# python -m orchflow.importers.legacy_xml ../workflow-coordinator/incident-management-workflow-model.xml -o workflows/traffic.yaml --task 4 --period 60 --deadline 40 --parallel 3 --name 'Traffic monitoring (IMW task 4, 3 intersections)'
+id: traffic
+name: Traffic monitoring (IMW task 4, 3 intersections)
+tasks:
+- id: '4'
+  name: camera_feed_intersection_1 + traffic_flow_service
+  location:
+    lat: 30.456048
+    lon: -91.20524
+  requirements:
+  - service_name: camera_feed_intersection_1
+    kind: sensor
+  - service_name: traffic_flow_service
+    kind: fog
+    deployable: true
+    artifact: Traffic_Flow_Finder.jar
+  period_s: 60.0
+  deadline_s: 40.0
+  parallel_instances: 3
