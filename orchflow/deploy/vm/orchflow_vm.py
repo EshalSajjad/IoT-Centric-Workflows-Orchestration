@@ -154,7 +154,13 @@ def run(cmd: list[str], *, stdin: str | None = None, timeout: float | None = Non
         shown = " ".join(shlex.quote(c) for c in cmd)
         print(f"  $ {shown}" + ("  <stdin>" if stdin else ""))
         return subprocess.CompletedProcess(cmd, 0, "", "")
-    res = subprocess.run(cmd, input=stdin, capture_output=True, text=True, timeout=timeout)
+    # Bytes, not text mode: on Windows text mode turns "\n" into "\r\n" on the way to ssh,
+    # and bash on the VM then rejects every line of a piped script.
+    raw = subprocess.run(cmd, input=stdin.encode() if stdin is not None else None,
+                         capture_output=True, timeout=timeout)
+    res = subprocess.CompletedProcess(cmd, raw.returncode,
+                                      raw.stdout.decode("utf-8", "replace"),
+                                      raw.stderr.decode("utf-8", "replace"))
     if check and res.returncode != 0:
         raise RuntimeError(f"{cmd[0]} failed ({res.returncode}): {res.stderr.strip()[-800:]}")
     return res
@@ -186,6 +192,12 @@ def report(results: dict[str, object]) -> bool:
         else:
             print(f"  {name}: {r}")
     return ok
+
+
+def broker_addr(inv: Inventory, h: Host) -> str:
+    """How host h reaches the broker. On the broker's own VM its name resolves to
+    127.0.1.1 (/etc/hosts), where Mosquitto isn't listening, so use loopback."""
+    return "127.0.0.1" if h.name == inv.broker else inv.broker
 
 
 def pick(inv: Inventory, only: list[str] | None) -> list[Host]:
@@ -255,14 +267,16 @@ def cmd_check(inv: Inventory, a: argparse.Namespace) -> int:
             print("  every node is on exactly one host")
         ok = not problems
     head = local_head()[:7]
-    probe = (f"docker image inspect {IMAGE} >/dev/null 2>&1 "
-             "&& echo image=ok || echo image=MISSING; "
-             f"git -C {shlex.quote(inv.repo_dir)} rev-parse --short HEAD 2>/dev/null || echo none; "
-             f"timeout 3 bash -c '</dev/tcp/{inv.broker}/{BROKER_PORT}' 2>/dev/null "
-             f"&& echo broker=ok || echo broker=UNREACHABLE")
+    def probe(h: Host) -> str:
+        return (f"docker image inspect {IMAGE} >/dev/null 2>&1 "
+                "&& echo image=ok || echo image=MISSING; "
+                f"git -C {shlex.quote(inv.repo_dir)} rev-parse --short HEAD 2>/dev/null "
+                "|| echo none; "
+                f"timeout 3 bash -c '</dev/tcp/{broker_addr(inv, h)}/{BROKER_PORT}' "
+                "2>/dev/null && echo broker=ok || echo broker=UNREACHABLE")
 
     def one(h: Host) -> str:
-        lines = remote(inv, h, probe, timeout=30).stdout.split()
+        lines = remote(inv, h, probe(h), timeout=30).stdout.split()
         if DRY_RUN:
             return "dry run"
         image, commit, broker = (lines + ["?", "?", "?"])[:3]
@@ -286,7 +300,7 @@ def agent_command(inv: Inventory, h: Host, experiment: str, seed: int, run_dir: 
     if h.cpus:
         docker.append(f"--cpus {h.cpus}")
     args = ["agent", experiment, "--nodes", h.nodes, "--name", h.name,
-            "--broker", f"{inv.broker}:{BROKER_PORT}", "--seed", str(seed),
+            "--broker", f"{broker_addr(inv, h)}:{BROKER_PORT}", "--seed", str(seed),
             "--run-dir", f"/results/{run_dir}", "--ready-timeout", str(ready_timeout), "--quiet"]
     if duration is not None:
         args += ["--duration", str(duration)]
@@ -364,8 +378,14 @@ def cmd_run(inv: Inventory, a: argparse.Namespace) -> int:
 
     if DRY_RUN:
         return 0
-    print(f"\nTable I for {out}:")
-    return subprocess.run([sys.executable, "-m", "orchflow.cli", "table1", str(out)]).returncode
+    # `orchflow table1` writes table1.csv into its working directory: run it in the results
+    # folder so the CSV sits next to the logs
+    code = subprocess.run([sys.executable, "-m", "orchflow.cli", "table1", str(out.resolve())],
+                          cwd=out).returncode
+    csv = out / "table1.csv"
+    if code == 0 and csv.exists():
+        print(f"\nTable I ({csv}):\n" + csv.read_text(encoding="utf-8"))
+    return code
 
 
 def cmd_stop(inv: Inventory, a: argparse.Namespace) -> int:

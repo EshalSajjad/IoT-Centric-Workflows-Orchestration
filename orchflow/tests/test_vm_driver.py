@@ -83,9 +83,16 @@ def test_agent_command() -> None:
     assert "--seed 4 --run-dir /results/plume-gom-live-x/seed-004" in cmd
     assert "--duration 120.0" in cmd
     assert "--no-mobility" not in cmd
+    # the broker's own VM reaches it over loopback
+    broker_host = vm.Host(name="orchflow-vm-1", nodes="coord", run_broker=True)
+    cmd = vm.agent_command(inv, broker_host, "experiments/plume_gom.yaml", seed=0,
+                           run_dir="x/seed-000", duration=None, ready_timeout=90.0,
+                           no_mobility=True)
+    assert "--broker 127.0.0.1:1883" in cmd and "--no-mobility" in cmd
 
 
-def test_run_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
+def test_run_dry_run(capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(vm, "DRY_RUN", False)  # main() sets it; restore it afterwards
     code = vm.main(["-i", str(VM / "inventory.example.yaml"), "--dry-run", "run",
                     str(EXPERIMENT), "--seeds", "1", "--duration", "60"])
     out = capsys.readouterr().out
@@ -95,6 +102,14 @@ def test_run_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     assert "orchflow-vm-1" in starts[-1]  # coordinator (leader) starts last
     assert out.count("docker wait orchflow-agent") == 3
     assert out.count("events-orchflow-vm-") == 3  # one log fetched per host
+
+
+def test_stdin_reaches_ssh_without_carriage_returns(monkeypatch: pytest.MonkeyPatch) -> None:
+    # bootstrap.sh is piped to `ssh ... sudo bash -s`; a CR on any line breaks bash
+    monkeypatch.setattr(vm, "DRY_RUN", False)
+    count_crs = "import sys; print(sys.stdin.buffer.read().count(b'\\r'))"
+    res = vm.run([sys.executable, "-c", count_crs], stdin="set -e\necho ok\n")
+    assert res.stdout.strip() == "0"
 
 
 def test_bootstrap_is_valid_bash() -> None:

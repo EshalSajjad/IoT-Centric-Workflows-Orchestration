@@ -105,11 +105,13 @@ if [[ "$RUN_BROKER" == 1 ]]; then
         BROKER_BIND=$(tailscale ip -4 2>/dev/null | head -n1) \
             || die "no Tailscale IP yet: log in to Tailscale first, or set BROKER_BIND"
     fi
-    # The broker has no password, so it must only listen on a private address.
+    # The broker has no password, so it must only listen on private addresses: the
+    # Tailscale IP for the other VMs, loopback for agents on this VM (here our own
+    # hostname resolves to 127.0.1.1, not the Tailscale IP).
     docker rm -f orchflow-broker >/dev/null 2>&1 || true
     docker run -d --restart unless-stopped --name orchflow-broker \
-        -p "$BROKER_BIND:1883:1883" eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf
-    echo "mosquitto listening on $BROKER_BIND:1883"
+        -p "$BROKER_BIND:1883:1883" -p "127.0.0.1:1883:1883" eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf
+    echo "mosquitto listening on $BROKER_BIND:1883 and 127.0.0.1:1883"
 fi
 
 step "done"
