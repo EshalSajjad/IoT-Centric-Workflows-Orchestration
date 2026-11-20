@@ -1,0 +1,15 @@
+# Live demo for the dashboard: the whole IMW (plume -> impose -> vehicles -> traffic -> re-route) at demo pace on the 20 x 20
+# testbed, with devices leaving and coming back so redeployments show up on the map.
+#   orchflow dashboard experiments/demo_dashboard.yaml      then open http://localhost:8050
+# Timings are shortened for watching (heartbeat 5 s, detection within ~20 s); they are not
+# the experiment settings used for Table I.
+name: demo-dashboard
+workflow: ../workflows/imw_demo.yaml
+testbed: ../configs/testbed_20x20.yaml
+runtime: live
+orchestration: {name: gom, params: {heartbeat_s: 5, heartbeat_timeout_s: 12, check_interval_s: 6}}
+binding: {name: nearest}
+mobility: {name: exponential, params: {mean_residence_s: 150, mean_rejoin_s: 60, graceful_probability: 0}}
+duration_s: 900
+seeds: [0]
+output_dir: ../results

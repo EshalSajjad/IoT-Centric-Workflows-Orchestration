@@ -6,6 +6,7 @@
     orchflow merge-logs RUN_DIR                       events-*.jsonl -> events.jsonl
     orchflow table1 RESULTS_DIR                       Table I from event logs (Track 2's code)
     orchflow import-legacy WORKFLOW.xml -o OUT.yaml   legacy XML -> workflow YAML (Track 1)
+    orchflow dashboard EXPERIMENT.yaml                live map + task status (viz/)
 
 Contracts with the other tracks (agree on these names on the group call):
     Track 2, sim runtime : orchflow.runtime.sim.run_seed(experiment, seed, run_dir) -> None
@@ -199,6 +200,8 @@ def build_parser() -> argparse.ArgumentParser:
     # arguments are handed to Track 1's importer as-is (see `orchflow import-legacy -h`)
     sub.add_parser("import-legacy", help="legacy workflow XML -> workflow YAML (Track 1)",
                    add_help=False)
+    sub.add_parser("dashboard", help="live map + task status (see `orchflow dashboard -h`)",
+                   add_help=False)
     return p
 
 
@@ -208,6 +211,10 @@ def main(argv: list[str] | None = None) -> int:
         from orchflow.importers.legacy_xml import main as import_legacy
 
         return import_legacy(argv[1:])
+    if argv[:1] == ["dashboard"]:
+        from orchflow.viz.__main__ import main as dashboard
+
+        return dashboard(argv[1:])
     args = build_parser().parse_args(argv)
     _setup_logging(getattr(args, "quiet", False))
     try:

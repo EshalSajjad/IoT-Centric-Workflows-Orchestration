@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Orchflow Incident Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --bg:#f6f7f9; --panel:#ffffff; --ink:#1f2328; --muted:#656d76; --line:#d8dee4;
+          --ok:#1a7f37; --warn:#bc4c00; --run:#0969da;
+          /* legacy monitor legend */
+          --m-wait:#1e90ff; --m-ready:#40d6b0; --m-exec:#8c8c8c; --m-leave:#d00000; }
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  body { margin:0; font:14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+         color:var(--ink); background:var(--bg); display:flex; flex-direction:column; }
+  nav { display:flex; align-items:center; gap:4px; padding:0 12px; background:var(--panel);
+        border-bottom:1px solid var(--line); height:44px; flex:none; }
+  nav .title { font-weight:600; margin-right:16px; }
+  nav button { border:0; background:none; font:inherit; padding:12px 12px 10px; cursor:pointer;
+               color:var(--muted); border-bottom:2px solid transparent; }
+  nav button.on { color:var(--ink); border-bottom-color:var(--run); }
+  nav .clock { margin-left:auto; color:var(--muted); font-size:12px; }
+  main { flex:1; display:flex; min-height:0; }
+  .view { flex:1; display:none; min-width:0; position:relative; }
+  .view.on { display:flex; }
+  #map { flex:1; }
+  #layers { position:absolute; top:10px; right:10px; z-index:1000; background:#fff;
+            padding:6px 10px; border-radius:6px; box-shadow:0 1px 4px rgba(0,0,0,.25);
+            font-size:12px; }
+  #layers label { display:block; cursor:pointer; }
+  #side { width:360px; flex:none; background:var(--panel); border-left:1px solid var(--line);
+          display:flex; flex-direction:column; overflow:auto; }
+  section { padding:12px 16px; border-bottom:1px solid var(--line); }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted);
+       margin:0 0 8px; }
+  .task { display:flex; justify-content:space-between; gap:8px; padding:4px 0; }
+  .task .name { font-weight:600; }
+  .task .meta { color:var(--muted); font-size:12px; }
+  .chip { font-size:11px; padding:2px 8px; border-radius:10px; white-space:nowrap;
+          background:#eaeef2; color:var(--muted); height:fit-content; }
+  .chip.executing { background:#ddf4ff; color:var(--run); }
+  .chip.waiting-for-input { background:#fff8c5; color:#7d4e00; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:2px 0; vertical-align:top; }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+  /* ALOHA plume model (legacy: a separate window with ALOHA's threat zone chart) */
+  #aloha { flex-direction:column; padding:20px 28px; overflow:auto; background:#fff; gap:16px; }
+  #aloha h1 { font-weight:400; font-size:30px; margin:0; }
+  #aloha .body { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+  #aloha-img { max-width:min(760px, 100%); border:1px solid var(--line); }
+  #aloha table { width:auto; min-width:320px; font-size:14px; }
+  #aloha td:first-child { color:var(--muted); padding-right:24px; }
+  #aloha .note { color:var(--muted); }
+  #log { padding:8px 16px; font-size:12px; }
+  .entry { padding:3px 0; border-bottom:1px dashed #eef1f4; }
+  .entry .t { color:var(--muted); display:inline-block; width:46px;
+              font-variant-numeric:tabular-nums; }
+  .entry.warn { color:var(--warn); } .entry.ok { color:var(--ok); }
+  .legend { background:#fff; padding:8px 10px; border-radius:6px; font-size:12px;
+            box-shadow:0 1px 4px rgba(0,0,0,.2); line-height:1.6; }
+  .sw { display:inline-block; width:12px; height:12px; border-radius:2px; margin-right:6px;
+        vertical-align:-2px; border:1px solid #0003; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px;
+         vertical-align:-1px; border:1px solid #333; }
+  #maplegend { position:absolute; left:10px; bottom:24px; z-index:1000; }
+  /* workflow monitor */
+  #monitor { flex-direction:column; padding:20px 28px; overflow:auto; background:#fff; }
+  #monitor .head { display:flex; justify-content:space-between; align-items:flex-start;
+                   gap:24px; flex-wrap:wrap; }
+  #monitor h1 { font-weight:400; font-size:30px; margin:0; }
+  #mlegend { border:2px solid #000; padding:6px 10px; display:grid;
+             grid-template-columns:auto auto; gap:4px 24px; font-size:13px; }
+  #mlegend span { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  #mlegend i { display:inline-block; width:40px; height:16px; border:3px solid; border-radius:4px; }
+  #graph { margin-top:24px; background:#f7f7f7; padding:24px; overflow:auto; }
+  #graph svg text { font:15px system-ui, sans-serif; fill:#111; }
+</style>
+</head>
+<body>
+<nav>
+  <span class="title">Orchflow</span>
+  <button data-view="mapview" class="on">Incident map</button>
+  <button data-view="monitor">Workflow monitor</button>
+  <button data-view="aloha">ALOHA plume model</button>
+  <span class="clock" id="clock">waiting for the run to start…</span>
+</nav>
+<main>
+  <div class="view on" id="mapview">
+    <div id="map"></div>
+    <div id="layers">
+      <label><input type="checkbox" data-layer="plume" checked> Plume</label>
+      <label><input type="checkbox" data-layer="vehicles" checked> Vehicles</label>
+      <label><input type="checkbox" data-layer="devices" checked> Devices</label>
+      <label><input type="checkbox" data-layer="cells"> Cells</label>
+    </div>
+    <div class="legend" id="maplegend">
+      <b>Threat zones (benzene)</b><br>
+      <span class="sw" style="background:#ff0000"></span>&gt; 4000 ppm (AEGL-3)<br>
+      <span class="sw" style="background:#ff9900"></span>&gt; 800 ppm (AEGL-2)<br>
+      <span class="sw" style="background:#ffff00"></span>&gt; 52 ppm (AEGL-1)<br>
+      <span style="color:#ff0000">━</span> vehicle route &nbsp; 🚗 vehicle<br>
+      <b>Devices</b><br>
+      <span class="dot" style="background:#2da44e"></span>serving
+      <span class="dot" style="background:#54aeff"></span>idle
+      <span class="dot" style="background:#afb8c1"></span>away
+    </div>
+    <div id="side">
+      <section><h2>Tasks</h2><div id="tasks"></div></section>
+      <section><h2 id="plume-h">Plume</h2><table id="plume"><tr><td>no plume yet</td><td></td></tr></table></section>
+      <section><h2>Vehicles</h2><table id="vehicles"><tr><td>not started</td><td></td></tr></table></section>
+      <section><h2>Latest sensor input</h2><table id="readings"></table></section>
+      <section style="border:0;padding-bottom:0"><h2>Events</h2></section>
+      <div id="log"></div>
+    </div>
+  </div>
+  <div class="view" id="monitor">
+    <div class="head">
+      <h1 id="mtitle">Workflow execution monitor</h1>
+      <div id="mlegend">
+        <span>Waiting for input <i style="border-color:var(--m-wait)"></i></span>
+        <span>Ready for deployment <i style="border-color:var(--m-ready)"></i></span>
+        <span>In execution <i style="border-color:var(--m-exec)"></i></span>
+        <span>Device leave <i style="border-color:var(--m-leave)"></i></span>
+      </div>
+    </div>
+    <div id="graph"></div>
+  </div>
+  <div class="view" id="aloha">
+    <h1>ALOHA plume model</h1>
+    <p class="note" id="aloha-note">Not imposed yet: the plume is imposed when the
+      impose_plume_service task runs.</p>
+    <div class="body">
+      <img id="aloha-img" alt="ALOHA threat zone chart (legacy Aloha_0.jpg)" hidden>
+      <table id="aloha-summary"></table>
+    </div>
+  </div>
+</main>
+<script>
+const CFG = /*CONFIG*/{};
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const mmss = t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+const DEVICE = { serving: '#2da44e', idle: '#54aeff', away: '#afb8c1' };
+const MON = { 'waiting for input': 'var(--m-wait)', 'ready for deployment': 'var(--m-ready)',
+              'in execution': 'var(--m-exec)', 'device leave': 'var(--m-leave)' };
+
+let A = null, S = null, G = {}, lastPlume = '', lastGraph = '';
+
+// ---------------------------------------------------------------- tabs
+// Each view has its own address (/#map, /#monitor, /#aloha), so like legacy's separate
+// windows each one can be opened in a window of its own.
+const VIEWS = { map: 'mapview', monitor: 'monitor', aloha: 'aloha' };
+function showView() {
+  const id = VIEWS[location.hash.slice(1)] || 'mapview';
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x.dataset.view === id));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('on', v.id === id));
+  if (A) A.resize();
+}
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  location.hash = Object.keys(VIEWS).find(k => VIEWS[k] === b.dataset.view);
+});
+window.addEventListener('hashchange', showView);
+showView();
+
+// ---------------------------------------------------------------- map adapters
+// Same drawing calls for Google Maps (legacy) and Leaflet/OpenStreetMap.
+function leafletAdapter(el, c, z) {
+  const m = L.map(el).setView(c, z);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(m);
+  const keyed = {};
+  return {
+    group: () => L.layerGroup().addTo(m),
+    clear: g => g.clearLayers(),
+    show: (g, on) => on ? g.addTo(m) : g.remove(),
+    resize: () => m.invalidateSize(),
+    polygon: (g, ring, s, tip) => {
+      const p = L.polygon(ring, { color: s.stroke, weight: s.weight ?? 1.5, fillColor: s.fill,
+        fillOpacity: s.fillOpacity ?? .35, dashArray: s.dash }).addTo(g);
+      if (tip) p.bindTooltip(tip);
+    },
+    polyline: (g, path, s, tip) => {
+      const p = L.polyline(path, { color: s.stroke, weight: s.weight ?? 4, opacity: .9 }).addTo(g);
+      if (tip) p.bindTooltip(tip);
+    },
+    circle: (g, c, r, s, tip) => L.circle(c, { radius: r, color: s.stroke, weight: 1,
+      fill: false, dashArray: '4 4' }).bindTooltip(tip).addTo(g),
+    pin: (g, c, tip) => L.marker(c).bindTooltip(tip).addTo(g),
+    dot: (g, id, c, s, tip) => {
+      let k = keyed[id];
+      if (!k) k = keyed[id] = L.circleMarker(c, { weight: 1, color: '#24292f', fillOpacity: .95 })
+        .bindTooltip('').addTo(g);
+      k.setLatLng(c); k.setRadius(s.radius); k.setStyle({ fillColor: s.fill }); k.setTooltipContent(tip);
+    },
+    car: (g, id, c, tip) => {
+      let k = keyed[id];
+      if (!k) k = keyed[id] = L.marker(c, { icon: L.divIcon({ html: '🚗', className: '',
+        iconSize: [24, 24], iconAnchor: [12, 12] }) }).bindTooltip('').addTo(g);
+      k.setLatLng(c); k.setTooltipContent(tip);
+    },
+  };
+}
+
+function googleAdapter(el, c, z) {
+  const m = new google.maps.Map(el, { center: { lat: c[0], lng: c[1] }, zoom: z });
+  const ll = p => ({ lat: p[0], lng: p[1] });
+  const plain = s => String(s).replace(/<br>/g, '\n').replace(/<[^>]+>/g, '');
+  const keyed = {};
+  const add = (g, o) => { g.items.push(o); if (g.on) o.setMap(m); return o; };
+  return {
+    group: () => ({ items: [], on: true }),
+    clear: g => { g.items.forEach(o => o.setMap(null)); g.items.length = 0; },
+    show: (g, on) => { g.on = on; g.items.forEach(o => o.setMap(on ? m : null)); },
+    resize: () => {},
+    polygon: (g, ring, s) => add(g, new google.maps.Polygon({ paths: ring.map(ll),
+      strokeColor: s.stroke, strokeWeight: s.weight ?? 1.5, fillColor: s.fill,
+      fillOpacity: s.fillOpacity ?? .35 })),
+    polyline: (g, path, s) => add(g, new google.maps.Polyline({ path: path.map(ll),
+      strokeColor: s.stroke, strokeWeight: s.weight ?? 4, strokeOpacity: .9 })),
+    circle: (g, c, r, s) => add(g, new google.maps.Circle({ center: ll(c), radius: r,
+      strokeColor: s.stroke, strokeWeight: 1, fillOpacity: 0 })),
+    pin: (g, c, tip) => add(g, new google.maps.Marker({ position: ll(c), title: plain(tip) })),
+    dot: (g, id, c, s, tip) => {
+      const icon = { path: google.maps.SymbolPath.CIRCLE, scale: s.radius, fillColor: s.fill,
+                     fillOpacity: .95, strokeColor: '#24292f', strokeWeight: 1 };
+      let k = keyed[id];
+      if (!k) k = keyed[id] = add(g, new google.maps.Marker({ position: ll(c), icon }));
+      k.setPosition(ll(c)); k.setIcon(icon); k.setTitle(plain(tip));
+    },
+    car: (g, id, c, tip) => {
+      let k = keyed[id];
+      if (!k) k = keyed[id] = add(g, new google.maps.Marker({ position: ll(c),
+        icon: { path: google.maps.SymbolPath.CIRCLE, scale: 0 },
+        label: { text: '🚗', fontSize: '22px' } }));
+      k.setPosition(ll(c)); k.setTitle(plain(tip));
+    },
+  };
+}
+
+// ---------------------------------------------------------------- drawing
+
+function start(adapter) {
+  A = adapter(document.getElementById('map'), [S.incident.lat, S.incident.lon], 15);
+  for (const n of ['cells', 'plume', 'vehicles', 'devices', 'incident']) G[n] = A.group();
+  for (const c of S.cells)
+    A.circle(G.cells, [c.lat, c.lon], c.radius_m, { stroke: '#8c959f' }, c.id);
+  A.show(G.cells, false);
+  for (const r of S.routes)  // legacy map_display.html: red polyline, weight 5
+    A.polyline(G.vehicles, r.path, { stroke: '#ff0000', weight: 5 }, `${r.id}: ${r.from} → ${r.to}`);
+  A.pin(G.incident, [S.incident.lat, S.incident.lon], 'Incident (plume source)');
+  document.querySelectorAll('#layers input').forEach(i =>
+    i.onchange = () => A.show(G[i.dataset.layer], i.checked));
+  document.getElementById('mtitle').textContent = S.workflow;
+  if (S.plume_mode === 'aloha') document.getElementById('plume-h').textContent = 'Plume (ALOHA)';
+  tick(); setInterval(tick, 1000);
+}
+
+function drawPlume(p) {
+  const key = p ? JSON.stringify(p.properties) + p.features.length : '';
+  if (key === lastPlume) return;
+  lastPlume = key;
+  A.clear(G.plume);
+  if (!p) return;
+  for (const f of p.features) {
+    if (f.geometry.type !== 'Polygon') continue;
+    const ring = f.geometry.coordinates[0].map(([x, y]) => [y, x]);
+    const pr = f.properties;
+    const lines = pr.confidence_lines;  // ALOHA's wind direction confidence lines
+    A.polygon(G.plume, ring, { stroke: pr.color === '#ffff00' ? '#e6c200' : pr.color,
+      fill: pr.color, fillOpacity: lines ? 0 : .45, weight: lines ? 1.5 : 1, dash: lines ? '5 5' : null },
+      esc(pr.name || `${pr.zone}: > ${pr.threshold_ppm} ppm`));
+  }
+  const rows = [];
+  if (S.plume_mode === 'aloha' && S.aloha) {
+    const a = S.aloha;
+    rows.push(['chemical', a.chemical_name], ['wind', a.wind], ['threat zone', a.yellow]);
+    const img = document.getElementById('aloha-img');
+    img.src = '/aloha.jpg'; img.hidden = false;
+    document.getElementById('aloha-note').textContent =
+      'Imposed on the incident map by the impose_plume_service task (legacy output_0.kml / Aloha_0.jpg).';
+    document.getElementById('aloha-summary').innerHTML = [['chemical', a.chemical_name],
+      ['time', a.time], ['wind', a.wind], ['red zone (AEGL-3)', a.red],
+      ['orange zone (AEGL-2)', a.orange], ['yellow zone (AEGL-1)', a.yellow], ['model', a.model]]
+      .filter(r => r[1]).map(([k, v]) =>
+        `<tr><td>${esc(k)}</td><td>${esc(String(v).split(' --- ')[0])}</td></tr>`).join('');
+  } else {
+    const q = p.properties;
+    rows.push(['chemical', q.chemical], ['wind', `${q.wind_m_s} m/s from ${q.wind_from_deg}°`],
+              ['stability class', q.stability], ['release', `${q.release_g_s} g/s`]);
+    for (const f of p.features) if (f.properties.extent_m)
+      rows.push([`${f.properties.zone} zone`, `${Math.round(f.properties.extent_m)} m`]);
+  }
+  document.getElementById('plume').innerHTML = rows.filter(r => r[1]).map(([k, v]) =>
+    `<tr><td>${esc(k)}</td><td>${esc(String(v).split(' --- ')[0])}</td></tr>`).join('');
+}
+
+function drawGraph(nodes) {
+  const key = JSON.stringify(nodes.map(n => n.state));
+  if (key === lastGraph) return;
+  lastGraph = key;
+  const W = 150, H = 64, DX = 190, DY = 98, P = 10;
+  const pos = {};
+  for (const n of nodes) pos[n.id] = { x: P + n.col * DX, y: P + n.row * DY };
+  const width = Math.max(...nodes.map(n => pos[n.id].x)) + W + P;
+  const height = Math.max(...nodes.map(n => pos[n.id].y)) + H + P;
+  let svg = `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
+    <defs><marker id="ar" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="6" markerHeight="6"
+      orient="auto"><path d="M0,0L10,5L0,10z" fill="#111"/></marker></defs>`;
+  for (const [a, b] of S.edges) {
+    const p = pos[a], q = pos[b];
+    const x1 = p.x + W, y1 = p.y + H / 2, x2 = q.x, y2 = q.y + H / 2, xm = x2 - 22;
+    svg += `<path d="M${x1},${y1}H${xm}V${y2}H${x2}" fill="none" stroke="#111"
+      stroke-width="1.3" marker-end="url(#ar)"/>`;
+  }
+  for (const n of nodes) {
+    const { x, y } = pos[n.id];
+    const words = n.label.split(' '), lines = [''];
+    for (const w of words) {
+      if ((lines[lines.length - 1] + ' ' + w).trim().length > 16) lines.push(w);
+      else lines[lines.length - 1] = (lines[lines.length - 1] + ' ' + w).trim();
+    }
+    svg += `<g><title>${esc(n.service)} (task ${esc(n.task)}): ${esc(n.state)}</title>
+      <rect x="${x}" y="${y}" width="${W}" height="${H}" rx="9" fill="#fff"
+        stroke="${MON[n.state]}" stroke-width="3"/>`;
+    lines.forEach((l, i) => svg += `<text x="${x + 10}" y="${y + H / 2 + (i - (lines.length - 1) / 2) * 19 + 5}">${esc(l)}</text>`);
+    svg += '</g>';
+  }
+  document.getElementById('graph').innerHTML = svg + '</svg>';
+}
+
+function draw(s) {
+  document.getElementById('clock').textContent =
+    `${s.running ? 'running' : 'stopped'} · t = ${mmss(s.t)} · redeployments ${s.rebinds.done}/${s.rebinds.started}`;
+  drawGraph(s.monitor);
+  drawPlume(s.plume);
+
+  for (const d of s.devices)
+    A.dot(G.devices, d.id, [d.lat, d.lon], { radius: d.state === 'serving' ? 8 : 4, fill: DEVICE[d.state] },
+      `${esc(d.id)} (${esc(d.peer)})<br>${esc(d.state)}` + (d.serving.length ? `<br>${d.serving.map(esc).join(', ')}` : ''));
+  for (const v of s.vehicles)
+    if (v.position) A.car(G.vehicles, v.id, v.position, `${esc(v.id)}: ${esc(v.status)}`);
+
+  document.getElementById('vehicles').innerHTML = s.vehicles.some(v => v.position)
+    ? s.vehicles.map(v => `<tr><td>${esc(v.id)}<br><span style="color:var(--muted);font-size:12px">${esc(v.from.split(',')[0])} → ${esc(v.to.split(',')[0])}</span></td><td>${esc(v.status)}</td></tr>`).join('')
+    : '<tr><td>not started (vehicle_status_service)</td><td></td></tr>';
+
+  document.getElementById('tasks').innerHTML = s.tasks.map(t => `
+    <div class="task"><div><div class="name">Task ${esc(t.id)}</div>
+      <div class="meta">${esc(t.name)}</div>
+      <div class="meta">instances ${t.started} · ok ${t.ok} · failed ${t.failed}</div></div>
+      <span class="chip ${t.status.replace(/ /g, '-')}">${esc(t.status)}</span></div>`).join('');
+
+  const r = (s.tasks.find(t => Object.keys(t.readings).length) || { readings: {} }).readings;
+  document.getElementById('readings').innerHTML = Object.keys(r).length
+    ? Object.entries(r).map(([k, v]) => `<tr><td>${esc(k.replace(/_/g, ' '))}</td><td>${esc(v)}</td></tr>`).join('')
+    : '<tr><td>waiting for input</td><td></td></tr>';
+
+  document.getElementById('log').innerHTML = s.log.map(e =>
+    `<div class="entry ${e.kind}"><span class="t">${mmss(e.t)}</span>${esc(e.text)}</div>`).join('');
+}
+
+async function tick() {
+  try { draw(await (await fetch('/state', { cache: 'no-store' })).json()); }
+  catch (e) { document.getElementById('clock').textContent = 'dashboard not reachable'; }
+}
+
+async function boot() {
+  S = await (await fetch('/static', { cache: 'no-store' })).json();
+  if (CFG.map !== 'google') return start(leafletAdapter);
+  window.initGoogle = () => start(googleAdapter);
+  window.gm_authFailure = () => { document.getElementById('clock').textContent +=
+    ' · Google Maps key rejected'; };
+  const s = document.createElement('script');
+  s.src = 'https://maps.googleapis.com/maps/api/js?callback=initGoogle' +
+          (CFG.googleKey ? '&key=' + encodeURIComponent(CFG.googleKey) : '');
+  s.async = true;
+  s.onerror = () => start(leafletAdapter);  // offline: fall back to OpenStreetMap
+  document.head.appendChild(s);
+}
+boot();
+</script>
+</body>
+</html>

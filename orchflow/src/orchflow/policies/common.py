@@ -257,6 +257,8 @@ class PeerBase(_Quiet):
         self.bindings: dict[str, str | None] = {}
         # (task_id, instance) -> {binding key: device id we are still waiting for}
         self.pending: dict[tuple[str, int], dict[str, str]] = {}
+        # service name -> device output (live runs: readings, plume...) per waiting instance
+        self.outputs: dict[tuple[str, int], dict[str, Any]] = {}
         self.last_seen: dict[str, float] = {}
         self.lost: set[str] = set()
         self.rebinds: dict[str, str] = {}  # rebind_id -> binding key
@@ -408,8 +410,11 @@ class PeerBase(_Quiet):
                 del self.pending[tk]
                 self.report(ctx, tk[0], tk[1], ok=False)
                 continue
+            out = msg.payload.get("output")
             for k in served:
                 del waiting[k]
+                if out is not None and (k == key or not resumed):
+                    self.outputs.setdefault(tk, {})[parse_bkey(k)[2]] = out
             if not waiting:
                 del self.pending[tk]
                 self.report(ctx, tk[0], tk[1], ok=True)
@@ -421,8 +426,12 @@ class PeerBase(_Quiet):
         self.rebinds.pop(rid, None)
 
     def report(self, ctx: NodeContext, task_id: str, instance: int, ok: bool) -> None:
+        # outputs travel with the result, like legacy's "Task Output is: ..." (the
+        # coordinator imposes them on the map); empty in simulation
+        outputs = self.outputs.pop((task_id, instance), {})
         ctx.send(Message(kind=MsgKind.TASK_RESULT, src=ctx.node_id, dst=COORDINATOR_ID,
-                         task_id=task_id, instance=instance, payload={"ok": ok}))
+                         task_id=task_id, instance=instance,
+                         payload={"ok": ok, "outputs": outputs}))
 
 
 # =========================================================================== coordinator

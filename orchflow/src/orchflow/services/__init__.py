@@ -53,8 +53,20 @@ def _reading(name: str, lo: int, hi: int, unit: str) -> None:
 
 
 # --- sensors (IMW tasks 1 and 4); units are legacy's -------------------------------------
-_reading("wind_speed", 0, 40, "knots")            # unit: Main_Rasp_IoT.java:2337
-_reading("wind_direction", 0, 359, "azimuth")     # unit: :2360
+def _around(name: str, mean: float, sd: float, lo: float, hi: float, unit: str,
+            wrap: bool = False) -> None:
+    """A reading that varies around the demo's conditions instead of jumping uniformly, so
+    the plume on the map drifts realistically between instances."""
+    @stub(name)
+    def _read(rng: np.random.Generator, inputs: dict[str, Any]) -> dict[str, Any]:
+        raw = float(rng.normal(mean, sd))
+        value = int(round(raw % 360 if wrap else min(hi, max(lo, raw))))
+        return {"value": value, "unit": unit, "reading": f"{value} {unit}"}
+
+
+# the demo's ALOHA run: wind 7 mph (~6 knots) from the SW
+_around("wind_speed", 6, 1.5, 1, 40, "knots")              # unit: Main_Rasp_IoT.java:2337
+_around("wind_direction", 225, 15, 0, 359, "azimuth", wrap=True)  # unit: :2360
 _reading("temperature", 20, 30, "°C")             # range + unit: :2156, :2383 (legacy)
 _reading("humidity", 0, 100, "RH")                # unit: :2406
 _reading("aerosol_concentration", 0, 100, "cm")   # unit: :2429 (sic)
