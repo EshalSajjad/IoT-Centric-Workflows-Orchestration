@@ -49,7 +49,10 @@
   #aloha { flex-direction:column; padding:20px 28px; overflow:auto; background:#fff; gap:16px; }
   #aloha h1 { font-weight:400; font-size:30px; margin:0; }
   #aloha .body { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
-  #aloha-img { max-width:min(760px, 100%); border:1px solid var(--line); }
+  /* Aloha_0.jpg is a screenshot of ALOHA's window: hide its title bar (close/minimise
+     buttons) and frame without touching the file. Margins in % of the width (417 x 353 px). */
+  #aloha-frame { width:min(760px, 100%); overflow:hidden; border:1px solid var(--line); }
+  #aloha-img { display:block; width:101.5%; margin:-6% 0 -0.8% -0.75%; }
   #aloha table { width:auto; min-width:320px; font-size:14px; }
   #aloha td:first-child { color:var(--muted); padding-right:24px; }
   #aloha .note { color:var(--muted); }
@@ -132,7 +135,7 @@
     <p class="note" id="aloha-note">Not imposed yet: the plume is imposed when the
       impose_plume_service task runs.</p>
     <div class="body">
-      <img id="aloha-img" alt="ALOHA threat zone chart (legacy Aloha_0.jpg)" hidden>
+      <div id="aloha-frame" hidden><img id="aloha-img" alt="ALOHA threat zone chart (legacy Aloha_0.jpg)"></div>
       <table id="aloha-summary"></table>
     </div>
   </div>
@@ -276,7 +279,7 @@ function drawPlume(p) {
     const a = S.aloha;
     rows.push(['chemical', a.chemical_name], ['wind', a.wind], ['threat zone', a.yellow]);
     const img = document.getElementById('aloha-img');
-    img.src = '/aloha.jpg'; img.hidden = false;
+    img.src = '/aloha.jpg'; document.getElementById('aloha-frame').hidden = false;
     document.getElementById('aloha-note').textContent =
       'Imposed on the incident map by the impose_plume_service task (legacy output_0.kml / Aloha_0.jpg).';
     document.getElementById('aloha-summary').innerHTML = [['chemical', a.chemical_name],
