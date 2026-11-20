@@ -1,0 +1,16 @@
+# Table I replication: plume workload, GOM, legacy mobility, sim, 60 min, paper testbed (20 x 20).
+# Mobility: what the legacy code did (fixed residence table + probability rule, deviations D4).
+#   orchflow run experiments/table1/plume_gom_legacy.yaml
+#   orchflow table1 results/table1-plume-gom-legacy
+name: table1-plume-gom-legacy
+workflow: ../../workflows/plume.yaml
+testbed: ../../configs/testbed_20x20.yaml
+runtime: sim
+orchestration: {name: gom}
+binding: {name: nearest}
+mobility: {name: legacy, params: {mode: gom}}
+network: {name: ideal}
+work: {name: fixed}
+duration_s: 3600
+seeds: 100        # deviations P3: mean +- 95% CI over >= 100 seeds
+output_dir: ../../results

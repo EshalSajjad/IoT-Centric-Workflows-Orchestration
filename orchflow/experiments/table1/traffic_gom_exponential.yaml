@@ -1,0 +1,17 @@
+# Table I replication: traffic workload, GOM, exponential mobility, sim, 60 min, paper testbed (20 x 20).
+# Mobility: the paper's exponential residence, mean 5 min. Rejoin mean (300 s) and abrupt
+# departures (no goodbye, detected by heartbeat timeout, as legacy) are not in the paper.
+#   orchflow run experiments/table1/traffic_gom_exponential.yaml
+#   orchflow table1 results/table1-traffic-gom-exponential
+name: table1-traffic-gom-exponential
+workflow: ../../workflows/traffic.yaml
+testbed: ../../configs/testbed_20x20.yaml
+runtime: sim
+orchestration: {name: gom}
+binding: {name: nearest}
+mobility: {name: exponential, params: {mean_residence_s: 300, mean_rejoin_s: 300, graceful_probability: 0}}
+network: {name: ideal}
+work: {name: fixed}
+duration_s: 3600
+seeds: 100        # deviations P3: mean +- 95% CI over >= 100 seeds
+output_dir: ../../results
