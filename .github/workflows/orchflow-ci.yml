@@ -17,7 +17,7 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: uv python install 3.12
       - run: uv sync --all-extras
-      - run: uv run ruff check src tests
+      - run: uv run ruff check src tests deploy
       - run: uv run pyright
       # a real Mosquitto broker so the live runtime's MQTT test runs too
       - run: docker run -d --name mosquitto -p 1883:1883 eclipse-mosquitto:2 mosquitto -c /mosquitto-no-auth.conf

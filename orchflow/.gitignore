@@ -6,3 +6,5 @@ __pycache__/
 results/
 dist/
 *.egg-info/
+deploy/vm/inventory.yaml
+deploy/vm/cloud-init.yaml

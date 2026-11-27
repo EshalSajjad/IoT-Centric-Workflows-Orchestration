@@ -1,0 +1,23 @@
+# Which VM hosts which Orchflow nodes. Copy to inventory.yaml (gitignored) and edit.
+# Host names are how your laptop reaches each VM over SSH: Tailscale names work best.
+#
+# Paper testbed (configs/testbed_20x20.yaml): coord + 20 peers + 400 devices.
+# Keep each peer on the same VM as its devices, so a cell's traffic stays on one machine.
+
+ssh:
+  user: ubuntu                  # Oracle and Multipass Ubuntu images both use `ubuntu`
+  key: ~/.ssh/id_ed25519        # optional; default = your ssh-agent / default key
+  # port: 22
+  # options: ["StrictHostKeyChecking=accept-new"]
+
+# broker: orchflow-vm-1         # optional: defaults to the host marked run_broker
+
+hosts:
+  orchflow-vm-1:
+    nodes: coord                # the coordinator (leader); `nodes:` takes any --nodes value
+    run_broker: true            # Mosquitto runs here, listening on the Tailscale IP only
+  orchflow-vm-2:
+    peers: 1-10                 # peer-01..peer-10 and their devices
+    # cpus: 2                   # optional docker --cpus limit
+  orchflow-vm-3:
+    peers: 11-20

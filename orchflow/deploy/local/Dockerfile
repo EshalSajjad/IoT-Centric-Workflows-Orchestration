@@ -7,5 +7,6 @@ COPY src ./src
 RUN pip install --no-cache-dir ".[live]"
 COPY workflows ./workflows
 COPY configs ./configs
+COPY experiments ./experiments
 COPY deploy ./deploy
 ENTRYPOINT ["orchflow"]

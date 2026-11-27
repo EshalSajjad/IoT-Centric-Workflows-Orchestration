@@ -1,0 +1,21 @@
+#cloud-config
+# Oracle Cloud: paste into "Show advanced options -> Management -> Cloud-init script" when
+# you create the instance (Ubuntu 22.04/24.04 image). The VM bootstraps itself on first boot.
+# Fill in the placeholders; use a different TS_HOSTNAME per VM and RUN_BROKER=1 on one VM only.
+# Never commit a filled-in copy: the Tailscale key is a secret.
+# Progress: `sudo tail -f /var/log/orchflow-bootstrap.log` on the VM.
+write_files:
+  - path: /etc/orchflow/bootstrap.env
+    permissions: "0600"
+    content: |
+      TS_AUTHKEY=tskey-auth-REPLACE_ME
+      TS_HOSTNAME=orchflow-vm-1
+      RUN_BROKER=0
+      ORCHFLOW_REF=main
+runcmd:
+  - - bash
+    - -c
+    - >-
+      curl -fsSL https://raw.githubusercontent.com/EshalSajjad/IoT-Centric-Workflows-Orchestration/main/orchflow/deploy/vm/bootstrap.sh
+      -o /root/orchflow-bootstrap.sh
+      && bash /root/orchflow-bootstrap.sh > /var/log/orchflow-bootstrap.log 2>&1
